@@ -1,14 +1,12 @@
 #pragma once
 #include "Types.h"
+#include <stdexcept>
 #include <type_traits>
 
-#include <execution>
 #include <ranges>
-#include <iterator>
 #include <algorithm>
 #include <vector>
-
-using std::views = std::ranges::views;
+#include <execution>
 
 namespace Kodiak {
 
@@ -16,10 +14,26 @@ namespace Kodiak {
     template<typename T>
     class Column;
 
+    template<>
+    class Column<bool> {
+        public:
+        Column(size_t size) : data_(size), size_(size){}
+
+        private:
+        std::vector<uint64_t> data_;
+        size_t size_;
+    };
+
+    template<typename T> struct is_column : std::false_type {};
+    template<typename T> struct is_column<Column<T>> : std::true_type {};
+
+    template<typename T>
+    concept Column_T = is_column<Column<T>>::value;
+
     template<Kodiak::Numerical T>
     class Column<T> {
         public:
-
+        using value_type = T;
         Column(size_t size) : data_(size){}
 
         Column(Column<T>&& other) noexcept : data_(std::exchange(other.data_,nullptr), std::exchange(other.size,0)){}
@@ -41,7 +55,6 @@ namespace Kodiak {
             return *this;
         }
 
-
         auto sum();
         auto filter(bool cond);
         auto getColumn();
@@ -54,74 +67,67 @@ namespace Kodiak {
             return data_.data();
         }
 
-        template<typename LHS, typename RHS, typename OP>
-        auto binaryOperation(const LHS& u, const RHS& v, OP&& op)
-        {
-            //LHS and RHS NEED to be containers, might have to make these a concept here
-            //size_t size = std::min(u.size,v.size);
-            auto idxView = std::views::iota(size_t{0},100);
-            std::transform(std::execution::par_unseq,
-                           idxView.begin(), idxView.end(),
-                           )
+        const auto begin() {
+            return data_.begin();
         }
 
+        const auto end() {
+            return data_.end();
+        }
 
         template<Kodiak::Numerical U>
         void push_back(const U& v){
             data_.push_back(v);
         }
 
-        template<Kodiak::Numerical U, typename Func>
-        auto transform(const Column<U>& rhs, Func&& func) {
-            Column<U> result(size);
-            U* resultPtr = result.data();
+        template<Column_T LHS, Column_T RHS, typename Op>
+        static auto binary_dispatch(const LHS& lhs, const RHS& rhs, Op op) {
 
-            const U* rhsData = rhs.data();
-            const U* data = data_.data();
+            using Ret_T = std::common_type<typename LHS::value_type, typename RHS::value_type>;
 
-            #pragma omp parallel for simd if(n > 1000)
-            for (size_t i = 0; i < data_.size();++i){
-               resultPtr[i] = func(rhsData[i],data[i]);
-            }
+            if (lhs.size() != rhs.size()) throw std::invalid_argument("Size mismatch");
+
+            size_t n = lhs.size();
+
+            Column<Ret_T> result(n);
+
+            auto idxView = std::views::iota(size_t{0}, n);
+
+            auto* res_ptr = result.data();
+
+            std::transform(std::execution::par_unseq,
+                idxView.begin(), idxView.end(),
+                result.data(),
+                [=](size_t i) {
+                    return op(lhs[i], rhs[i]);
+                }
+            );
 
             return result;
         }
 
-        template<Kodiak::Numerical U,typename Func>
-        auto transform(Func&& func) {
-            Column<U> result(size);
+        template<Column_T LHS, typename RHS, typename OP>
+        static auto binaryOperation(const LHS& lhs, const RHS& rhs, OP op){
 
-            T* resultPtr = result.data();
-            const T* colPtr = data_.data();
-            #pragma omp parallel for simd if(n > 1000)
-            for (size_t i = 0; i < size; ++i){
-                resultPtr[i] = func(colPtr[i]);
-            }
-            return result;
+            using Ret_T = std::common_type<typename LHS::value_type, RHS>;
+
+            size_t n = lhs.size();
+            Column<Ret_T> result(n);
+
+            auto idxView = std::views::iota(size_t{0},n);
+
+            std::transform(std::execution::par_unseq,
+                idxView.begin(), idxView.end(),
+                result.data(),
+                [=](size_t i){ return op(lhs[i],rhs);});
         }
 
-        template<Kodiak::Numerical U>
-        friend auto operator+(const Column<T>& lhs, const U& rhs) {
-            if (lhs.size() != rhs.size()){
-                throw std::invalid_argument("Columns are not equal in Dimension");
-            }
-            auto binaryOp = [rhs](auto elt){return rhs+elt;};
-            return lhs. template transform<U>(binaryOp);
-        }
 
-        template<Kodiak::Numerical U>
-        friend auto operator+(const U& lhs, const Column<T>& rhs) {
-            return rhs + lhs;
-        }
+        template<typename LHS, Column_T RHS, typename OP>
+        static auto binaryOperation(const LHS& lhs, const RHS& rhs, OP op){
 
-        template<Kodiak::Numerical V, Kodiak::Numerical U>
-        friend auto operator+(const Column<V>& lhs, const Column<U>& rhs) {
-            if (lhs.size() != rhs.size()){
-                throw std::invalid_argument("Columns are not equal in Dimension");
-            }
-            using res_t = std::common_type_t<U,V>;
-            auto op = [](const res_t& lhs, const res_t& rhs){return lhs+rhs;};
-            return lhs. template transform<res_t>(rhs,op);
+            using Ret_T = std::common_type<typename LHS::value_type, RHS>;
+
         }
 
         template<Kodiak::Numerical U>
@@ -165,13 +171,4 @@ namespace Kodiak {
         size_t size_;
     };
 
-    template<>
-    class Column<bool> {
-        public:
-        Column(size_t size) : data_(size), size_(size){}
-
-        private:
-        std::vector<uint64_t> data_;
-        size_t size_;
-    };
 };
