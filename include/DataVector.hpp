@@ -9,18 +9,39 @@ namespace Kodiak {
     class DataVector {
 
         DataVector();
-        DataVector(DataVector&& other);
+        //should we be able to copy/move
+        //given we don't actually dynamically manage objects this may not be the best idea
+        DataVector(const DataVector& other) = delete;
+        DataVector operator=(const DataVector& other) = delete;
 
         ~DataVector();
 
         template<typename T>
-        auto push_back(const T& v);
+        auto push_back(const T& v){
+            get_column<T>().push_back(v);
+        }
+
+        template<typename T>
+        auto size(){
+            get_column<T>().getSize();
+        }
+
+        template<typename T>
+        auto emplace_back(const T& v){
+            get_column<T>().push_back(v);
+        }
 
         template <typename T>
-        [[nodiscard]] Column<T>& get_column();
+        [[nodiscard]] Column<T>& get_column(){
+            Column<T> col = vectors_<T>[this];
+            return col;
+        }
 
         template <typename T>
-        [[nodiscard]] const Column<T>& get_column() const;
+        [[nodiscard]] const Column<T>& get_column() const {
+            const Column<T> col = vectors_<T>[this];
+            return col;
+        }
 
         private:
 
