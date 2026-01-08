@@ -12,7 +12,6 @@
 
 namespace Kodiak {
 
-
     template<typename T>
     class Column;
 
@@ -122,7 +121,24 @@ namespace Kodiak {
     template<>
     class Column<bool> {
         public:
-        Column(size_t size) : data_(size), size_(size){}
+        using value_type = bool;
+        Column(size_t size) : data_((size+63)/64,0), size_(size) {}
+
+        size_t size(){ return size_;}
+
+        bool operator[](size_t i) const {
+            //this is to find a particular bit?
+            size_t block = i / 64;
+            size_t offsetBit = i % 64;
+            return (data_[block] >> offsetBit) & 1;
+        }
+
+        void push_back(bool val){
+            size_t block = size_ / 64;
+            size_t bit = size_ % 64;
+            auto ret = data_[size_];
+            ret = (ret & ~(1ULL << size_)) | ((unsigned int)val << size_);
+        }
 
         uint64_t* data(){
             return data_.data();
@@ -139,13 +155,13 @@ namespace Kodiak {
         using value_type = T;
         Column(size_t size) : data_(size){}
 
-        Column(Column<T>&& other) noexcept : data_(std::exchange(other.data_,nullptr), std::exchange(other.size,0)){}
-        Column(const Column<T>& other) noexcept : data_(other.data_), size(other.size){}
+        Column(Column<T>&& other) noexcept : data_(std::exchange(other.data_,nullptr), std::exchange(other.size_,0)){}
+        Column(const Column<T>& other) noexcept : data_(other.data_), size_(other.size_){}
 
         Column<T> operator=(const Column<T>& rhs) noexcept {
             if (this != &rhs){
                 data_ = rhs.data_;
-                size = rhs.size;
+                size_ = rhs.size_;
             }
             return *this;
         }
@@ -153,7 +169,7 @@ namespace Kodiak {
         Column<T> operator=(Column<T>&& rhs) noexcept {
             if (this != &rhs){
                 data_ = std::exchange(rhs.data_,nullptr);
-                size = std::exchange(rhs.size,0);
+                size_ = std::exchange(rhs.size_,0);
             }
             return *this;
         }
@@ -163,7 +179,7 @@ namespace Kodiak {
         auto getColumn();
 
         size_t getSize() const noexcept {
-            return size;
+            return size_;
         }
 
         const T* data() const {
@@ -178,24 +194,48 @@ namespace Kodiak {
             return data_.end();
         }
 
-        template<Kodiak::Numerical U>
-        void push_back(const U& v){
+        void push_back(const T& v){
             data_.push_back(v);
         }
 
         private:
         std::vector<T> data_;
-        size_t size;
+        size_t size_;
     };
 
     template<Kodiak::Categorical T>
     class Column<T> {
         public:
         using value_type = T;
+
+        Column(size_t size) : data_(size),size_(size){}
+
+        Column(Column<T>&& other) : data_(std::exchange(other.data_, nullptr)), size_(std::exchange(other.size_,0)) {}
+        Column(const Column<T>& other) : data_(other.data_), size_(other.size_){}
+
+        Column<T> operator=(const Column<T>& rhs){
+            if (this != &rhs){
+                data_ = rhs.data_;
+                size_ = rhs.size_;
+            }
+            return *this;
+        }
+
+        Column<T> operator=(Column<T>&& rhs){
+            if (this != &rhs){
+                data_ = std::exchange(rhs.data_,nullptr);
+                size_ = std::exchange(rhs.size_,nullptr);
+            }
+            return *this;
+        }
+
         auto filter();
         auto getColumn();
 
-        Column<T> operator+(const std::string_view);
+        void push_back(const T& v)
+        {
+            data_.push_back(v);
+        }
 
         const T* data() {
             return data_.data();
