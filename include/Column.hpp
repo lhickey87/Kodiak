@@ -126,8 +126,9 @@ namespace Kodiak {
 
         size_t size(){ return size_;}
 
+        uint64_t* data(){ return data_.data();}
+
         bool operator[](size_t i) const {
-            //this is to find a particular bit?
             size_t block = i / 64;
             size_t offsetBit = i % 64;
             return (data_[block] >> offsetBit) & 1;
@@ -140,9 +141,6 @@ namespace Kodiak {
             ret = (ret & ~(1ULL << size_)) | ((unsigned int)val << size_);
         }
 
-        uint64_t* data(){
-            return data_.data();
-        }
 
         private:
         std::vector<uint64_t> data_;
@@ -154,6 +152,8 @@ namespace Kodiak {
         public:
         using value_type = T;
         Column(size_t size) : data_(size){}
+
+        explicit Column(std::vector<T>&& data) : data_(std::move(data)){}
 
         Column(Column<T>&& other) noexcept : data_(std::exchange(other.data_,nullptr), std::exchange(other.size_,0)){}
         Column(const Column<T>& other) noexcept : data_(other.data_), size_(other.size_){}

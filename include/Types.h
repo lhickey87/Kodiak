@@ -13,4 +13,6 @@ namespace Kodiak {
     template <typename T>
     concept Categorical = std::is_same_v<std::string, T> ||
                           std::is_same_v<std::string_view, T>;
+
+    enum class DataType {Integer, Bool, Float, String};
 }

@@ -14,10 +14,9 @@ namespace Kodiak {
 
         DataFrame();
 
+        //WHEN read_csv is called would this be called? Likely not
         template<typename T,size_t S>
-        auto load_column(std::string_view name,DataVector<S>&& cols){
-
-        }
+        auto load_column(std::string_view name,DataVector<S>&& cols);
 
         bool isCSV(const fs::path& p);
         auto read_csv(std::string_view fileName);
