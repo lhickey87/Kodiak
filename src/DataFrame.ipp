@@ -16,7 +16,34 @@ namespace Kodiak {
     }
 
     template<typename I, typename H>
-    auto DataFrame<I,H>::read_csv(std::string_view fileName){
-        //we will need a method that actually constructs the Columns based on the csv file
+    void DataFrame<I,H>::setColumnIndexMap(const std::string& line) {
+        size_t columnIndex = 0;
+        size_t start = 0;
+        while (start < line.size()) {
+
+            size_t commaPos = line.find(',', start);
+            if (commaPos == std::string::npos) commaPos = line.size();
+
+            nameIndMap_.emplace(line.substr(start, commaPos - start), columnIndex++);
+            start = commaPos + 1;
+        }
+    }
+
+    template<typename I, typename H>
+    auto DataFrame<I,H>::read_csv(const fs::path& filePath)
+    {
+        std::ifstream inputFile{filePath, std::ios::in};
+        std::string str(static_cast<size_t>(fs::file_size(filePath)),0);
+
+        inputFile.read(str.data(),str.size());
+        // 1. Names of the Columns (then store the name to index in our map)
+        // 2. Initialize each of the columns and store them in our map
+        size_t endOfRow = str.find('\n');
+        if (endOfRow == std::string::npos){ std::cout << "CSV File has no header" << std::endl;}
+
+        std::string header = str.substr(0, endOfRow);
+
+        setColumnIndexMap(header);
+
     }
 };

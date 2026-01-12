@@ -2,8 +2,7 @@
 #include "Column.hpp"
 #include <string_view>
 
-
-std::optional<int> parseInt(std::string_view str)
+std::optional<int> getInteger(std::string_view str)
 {
     int result{};
     auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), result);
@@ -12,21 +11,17 @@ std::optional<int> parseInt(std::string_view str)
     return success ? std::optional<int>{result} : std::nullopt;
 }
 
-auto convertBool(std::string_view str){
-    bool retVal;
-    retVal = (str == "true") ? true : false;
-    return retVal;
+
+inline std::optional<bool> getBoolean(std::string_view str)
+{
+    if (str == "true") return true;
+    else if (str == "false") return false;
+    else return std::nullopt;
 }
 
-std::optional<bool> isBool(std::string_view str)
+std::tuple<Kodiak::DataType, DataValue> getElement(std::string_view str)
 {
-    bool isbool = (str == "true" || str == "false");
-    return (isbool) ? std::optional<bool>(convertBool(str)) : std::nullopt;
-}
-
-std::tuple<Kodiak::DataType, DataValue> getValue(std::string_view str)
-{
-    if (auto i = parseInt(str)){
+    if (auto i = getInteger(str)){
         return {Kodiak::DataType::Integer, *i};
     } else if (auto b = isBool(str)){
         return {Kodiak::DataType::Bool, *b};
@@ -35,30 +30,39 @@ std::tuple<Kodiak::DataType, DataValue> getValue(std::string_view str)
     }
 }
 
+// This is the function implementation found in C++ 17 in Detail
 [[nodiscard]] std::vector<std::string_view> splitString(std::string_view str, char delim)
 {
+    std::vector<std::string_view> output;
+    for (auto first = str.begin(), second = str.begin(), last = str.end(); first != last && second != last; first = std::next(second)){
+        second = std::find(first,last, delim);
 
+        output.emplace_back(&*first, std::distance(first,second));
+        if (second == last) break;
+    }
+
+    return output;
 }
 
-//question is, would we be able to do this in parallel
-// could possibly use for each, with some const
-auto convertString(std::string_view str)
+template <typename ColType>
+inline ColType convertString(std::string_view str)
 {
-    auto [type, value] = getValue(str);
-    return value;
+    auto [_, val] = getElement(str);
+    return std::get<ColType>(val);
 }
 
-template<typename T>
-[[nodiscard]] std::vector<T> getColumn(const std::vector<std::string_view>& str, size_t colInd, size_t numColumns)
+//this will be called as we move through the actual csv
+template<typename ColType>
+std::vector<ColType> getColumn(const std::vector<std::string_view>& strVector, size_t colInd, size_t numColumns)
 {
     std::vector<size_t> indices;
-    for (size_t i = colInd; i < str.size(); i += numColumns){ indices.push_back(i);}
+    for (size_t i = colInd; i < strVector.size(); i += numColumns){ indices.push_back(i);}
 
-    std::vector<T> out(indices.size());
+    std::vector<ColType> out(indices.size());
 
     std::transform(std::execution::par,
                 indices.begin(),indices.end(),
                 out.begin(),
-                [&](size_t i){return convertString(str[i]);});
+                [&](size_t i){ return convertString<ColType>(strVector[i]);});
     return out;
 }
