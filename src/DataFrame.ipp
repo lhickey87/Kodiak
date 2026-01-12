@@ -27,6 +27,8 @@ namespace Kodiak {
             nameIndMap_.emplace(line.substr(start, commaPos - start), columnIndex++);
             start = commaPos + 1;
         }
+
+        numColumns_ = columnIndex;
     }
 
     template<typename I, typename H>

@@ -35,6 +35,7 @@ namespace Kodiak {
         using ColDict = std::unordered_map<std::string_view,size_t>;
 
         ColDict nameIndMap_{};
+        size_t numColumns_;
         Columns data_{};
     };
 }
