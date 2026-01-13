@@ -4,24 +4,18 @@
 
 namespace CSV {
 
-    bool isInteger(std::string_view str)
+
+    template<typename ColType>
+    bool isType(std::string_view str)
     {
-        int result{};
+        ColType result{};
         auto [ptr,ec] = std::from_chars(str.data(), str.data()+str.size(),result);
         return (ec == std::errc{} && ptr == (str.data()+str.size()));
     }
 
-    bool isFloat(std::string_view str)
+    template<>
+    bool isType<bool>(std::string_view str)
     {
-        double value;
-        auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), value);
-        return ec == std::errc() && ptr == str.data() + str.size();
-    }
-
-    bool isBoolean(std::string_view str)
-    {
-        if (str.empty()) return false;
-
         return (str == "false" || str == "true" ||
                 str == "False" || str == "True");
     }
@@ -35,6 +29,12 @@ namespace CSV {
     }
 
     template<>
+    std::string getElement<std::string>(std::string_view str)
+    {
+        return std::string(str);
+    }
+
+    template<>
     bool getElement<bool>(std::string_view str)
     {
         return (str[0] == 'T' || str[0] == 't' || str[0] == '1');
@@ -42,51 +42,43 @@ namespace CSV {
 
     Kodiak::DataType getType(std::string_view str)
     {
-        if (isInteger(str)){
+        if (isType<int>(str)){
             return Kodiak::DataType::Integer;
-        } else if (isBoolean(str)){
+        } else if (isType<bool>(str)){
             return Kodiak::DataType::Bool;
-        } else if (isFloat(str)){
+        } else if (isType<double>(str)){
             return Kodiak::DataType::Float;
         } else {
             return Kodiak::DataType::String;
         }
     }
 
-    // This is the function implementation found in C++ 17 in Detail
-    [[nodiscard]] std::vector<std::string_view> splitString(std::string_view str, char delim)
+    StringVector splitString(std::string_view str, char delim)
     {
-        std::vector<std::string_view> output;
-        for (auto first = str.begin(), second = str.begin(), last = str.end(); first != last && second != last; first = std::next(second)){
-            second = std::find(first,last, delim);
+        StringVector strVector;
+        auto rows = str | std::views::split('\n') | std::views::drop(1);
 
-            output.emplace_back(&*first, std::distance(first,second));
-            if (second == last) break;
+        for (auto&& row : rows){
+            for (auto&& field : row | std::views::split(delim)){
+                strVector.emplace_back(&*field.begin(),std::ranges::distance(field));
+            }
         }
-
-        return output;
+        return strVector;
     }
 
-    template <typename ColType>
-    inline ColType convertString(std::string_view str)
-    {
-        auto [_, val] = getElement<ColType>(str);
-        return std::get<ColType>(val);
-    }
-
+    //instead of this we should have a method that Does DataVector dataVec. THEN adds everything into the vector using push_back
     //this will be called as we move through the actual csv
     template<typename ColType>
-    std::vector<ColType> getColumn(const std::vector<std::string_view>& strVector, size_t colInd, size_t numColumns)
+    std::vector<ColType> getColumn(const StringVector& strVector, size_t colInd, size_t numColumns)
     {
-        std::vector<size_t> indices;
-        for (size_t i = colInd; i < strVector.size(); i += numColumns){ indices.push_back(i);}
+        size_t size = (strVector.size() / numColumns)+1;
 
-        std::vector<ColType> out(indices.size());
+        std::vector<ColType> out;
+        out.reserve(size);
 
-        std::transform(std::execution::par,
-                    indices.begin(),indices.end(),
-                    out.begin(),
-                    [&](size_t i){ return convertString<ColType>(strVector[i]);});
+        for (size_t i = colInd; i < strVector.size(); i += numColumns) {
+            out.push_back(getElement<ColType>(strVector[i]));
+        }
         return out;
     }
 

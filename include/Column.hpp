@@ -141,7 +141,6 @@ namespace Kodiak {
             ret = (ret & ~(1ULL << size_)) | ((unsigned int)val << size_);
         }
 
-
         private:
         std::vector<uint64_t> data_;
         size_t size_;
@@ -194,6 +193,11 @@ namespace Kodiak {
             return data_.end();
         }
 
+        void reserve(size_t size)
+        {
+            data_.reserve(size);
+        }
+
         void push_back(const T& v){
             data_.push_back(v);
         }
@@ -235,6 +239,11 @@ namespace Kodiak {
         void push_back(const T& v)
         {
             data_.push_back(v);
+        }
+
+        void reseve(size_t size)
+        {
+            data_.reserve(size);
         }
 
         const T* data() {

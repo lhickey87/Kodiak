@@ -2,6 +2,7 @@
 #include <concepts>
 #include <type_traits>
 #include <algorithm>
+#include <vector>
 
 namespace Kodiak {
 
@@ -15,4 +16,6 @@ namespace Kodiak {
                           std::is_same_v<std::string_view, T>;
 
     enum class DataType {Integer, Bool, Float, String};
+
+    using StringVector = std::vector<std::string_view>;
 }
