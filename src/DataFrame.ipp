@@ -1,28 +1,78 @@
 #include "DataFrame.hpp"
 #include "DataVector.hpp"
 #include <filesystem>
-
-namespace Kodiak {
+ namespace Kodiak {
 
     template<typename I, typename H>
-    bool DataFrame<I,H>::isCSV(const fs::path& p){
+    DataFrame<I,H>::DataFrame(size_t size)
+        : numColumns_(size),
+          data_(size)
+        {
+            nameIndMap_.reserve(size);
+        }
+
+
+
+    template<typename I, typename H>
+    DataFrame<I,H>::DataFrame(const DataFrame& other)
+    {
+        if (this != &other){
+            nameIndMap_ = other.nameIndMap_;
+            data_ = other.data_;
+            numColumns_ = other.numColumns_;
+        }
+    }
+
+    template<typename I, typename H>
+    DataFrame<I,H>::DataFrame(DataFrame&& other)
+    {
+        if (this != &other){
+            nameIndMap_ = std::move(other.nameIndMap_);
+            data_ = std::move(other.data_);
+            numColumns_ = std::move(other.numColumns_);
+        }
+    }
+
+    template<typename I, typename H>
+    DataFrame<I,H>& DataFrame<I,H>::operator=(const DataFrame& other)
+    {
+        if (this != &other){
+            nameIndMap_ = other.nameIndMap_;
+            data_ = other.data_;
+            numColumns_ = other.numColumns_;
+        }
+        return *(this);
+    }
+
+    template<typename I, typename H>
+    DataFrame<I,H>& DataFrame<I,H>::operator=(DataFrame&& other){
+        if (this != &other){
+            nameIndMap_ = std::move(other.nameIndMap_);
+            data_ = std::move(other.data_);
+            numColumns_ = std::move(other.numColumns_);
+        }
+        return *(this);
+    }
+
+    template<typename I, typename H>
+    bool DataFrame<I,H>::isCSV(const fs::path& p)
+    {
         return fs::is_regular_file(p) && p.extension() == ".csv";
     }
 
     template<typename I, typename H>
-    void DataFrame<I,H>::setColumnIndexMap(const std::string& line) {
-        size_t columnIndex = 0;
-        size_t start = 0;
-        while (start < line.size()) {
+    void DataFrame<I,H>::setColumnIndexMap(const std::string& line)
+    {
+        size_t index = 0;
 
-            size_t commaPos = line.find(',', start);
-            if (commaPos == std::string::npos) commaPos = line.size();
+        //this could be made much easier if we just split it FROM the read_csv
+        auto colNames = line | std::views::split(',');
 
-            nameIndMap_.emplace(line.substr(start, commaPos - start), columnIndex++);
-            start = commaPos + 1;
+        for (auto&& field : colNames){
+            nameIndMap_.emplace(std::string(field.begin(),field.end()), index++);
         }
 
-        numColumns_ = columnIndex;
+        numColumns_ = index;
     }
 
     template<typename I, typename H>
@@ -63,29 +113,27 @@ namespace Kodiak {
         }
     }
 
-
-
     template<typename I, typename H>
-    auto DataFrame<I,H>::read_csv(const fs::path& filePath)
+    DataFrame<I,H> DataFrame<I,H>::read_csv(const fs::path& filePath)
     {
         std::ifstream inputFile{filePath, std::ios::in};
         std::string str(static_cast<size_t>(fs::file_size(filePath)),0);
 
         inputFile.read(str.data(),str.size());
-        // 2. Initialize each of the columns and store them in our map
-        size_t endOfRow = str.find('\n');
-        if (endOfRow == std::string::npos){ std::cout << "CSV File has no header" << std::endl;}
 
-        std::string header = str.substr(0, endOfRow);
-        setColumnIndexMap(header);
+        StringVector headerRow = CSV::getColumnNames(str);
 
-        StringVector strVector = CSV::splitString(str,',');
+        DataFrame df(headerRow.size());
 
-        for (size_t i = 0; i < numColumns_; ++i){
-            Kodiak::DataType colType = CSV::getType(strVector[i]);
-            //call Set Column Helper with type, this will initialize our data_{}
-            getColumnImpl(strVector, colType, i);
+        df.setColumnIndexMap(headerRow);
+
+        StringVector elements = CSV::getDataCells(str);
+
+        for (size_t i = 0; i < df.numColumns_; ++i){
+            Kodiak::DataType colType = CSV::getColumnType(elements[i]);
+            df.getColumnImpl(elements, colType, i);
         }
 
+        return df;
     }
 };

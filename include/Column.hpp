@@ -227,8 +227,8 @@ namespace Kodiak {
 
         Column<T> operator=(Column<T>&& rhs){
             if (this != &rhs){
-                data_ = std::exchange(rhs.data_,nullptr);
-                size_ = std::exchange(rhs.size_,nullptr);
+                data_ = std::move(rhs.data_);
+                size_ = std::move(rhs.size_);
             }
             return *this;
         }

@@ -4,7 +4,6 @@
 
 
 namespace Kodiak {
-
     //this will be our heterogenous vector, we will have a map of const DataVector to a std::vector of type T
     class DataVector {
         using ClearFunction = void(*)(DataVector&);
@@ -12,7 +11,6 @@ namespace Kodiak {
         using MoveFunction = void(*)(DataVector&, DataVector&);
 
         public:
-
         DataVector() = default;
         //given we don't actually dynamically manage objects this may not be the best idea
         DataVector(const DataVector& other)
@@ -50,28 +48,30 @@ namespace Kodiak {
                     moveFunction(other,*this);
                 }
             }
+
+            return *(this);
         }
 
         ~DataVector() { clear();}
 
-        template<typename T>
-        auto push_back(const T& v){
-            get_column<T>().push_back(v);
+        template<typename ColType>
+        auto push_back(const ColType& v){
+            get_column<ColType>().push_back(v);
         }
 
-        template<typename T>
+        template<typename ColType>
         auto reserve(size_t size){
-            get_column<T>().reserve(size);
+            get_column<ColType>().reserve(size);
         }
 
-        template<typename T>
+        template<typename ColType>
         auto size(){
-            get_column<T>().getSize();
+            get_column<ColType>().getSize();
         }
 
-        template<typename T, typename... Args>
+        template<typename ColType, typename... Args>
         auto emplace_back(Args&&... args){
-            get_column<T>().push_back(std::forward<Args>(args)...);
+            get_column<ColType>().push_back(std::forward<Args>(args)...);
         }
 
         void clear()
@@ -82,27 +82,28 @@ namespace Kodiak {
             }
         }
 
-        template <typename T>
-        [[nodiscard]] Column<T>& get_column(){
-            auto iter = vectors_<T>.find(this);
-            if (iter == vectors_<T>.end())
+        template <typename ColType>
+        [[nodiscard]] Column<ColType>& get_column(){
+            auto iter = vectors_<ColType>.find(this);
+            if (iter == vectors_<ColType>.end())
             {
-                clearFunctions_.push_back([](DataVector& instance){ vectors_<T>.erase(instance);});
+                clearFunctions_.push_back([](DataVector& instance){ vectors_<ColType>.erase(instance);});
 
-                copyFunctions_.push_back([](const DataVector& from, DataVector& to){ vectors_<T>[&to] = vectors_<T>[&from];});
+                copyFunctions_.push_back([](const DataVector& from, DataVector& to){ vectors_<ColType>[&to] = vectors_<ColType>[&from];});
 
-                moveFunctions_.push_back([](DataVector& from, DataVector& to){vectors_<T>[&to] = std::move(vectors_<T>[&from]);});
+                moveFunctions_.push_back([](DataVector& from, DataVector& to){vectors_<ColType>[&to] = std::move(vectors_<ColType>[&from]);});
 
             }
             return iter->second;
         }
 
-        template <typename T>
-        [[nodiscard]] const Column<T>& get_column() const {
-            return vectors_<T>[this];
+        template <typename ColType>
+        [[nodiscard]] const Column<ColType>& get_column() const {
+            return vectors_<ColType>[this];
         }
 
         private:
+
         std::vector<ClearFunction> clearFunctions_;
         std::vector<CopyFunction> copyFunctions_;
         std::vector<MoveFunction> moveFunctions_;

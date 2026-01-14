@@ -16,19 +16,23 @@ namespace Kodiak {
     class DataFrame {
         public:
 
-        DataFrame();
+        explicit DataFrame(size_t size);
 
-        //WHEN read_csv is called would this be called? Likely not
-        template<typename T,size_t S>
-        auto load_column(std::string_view name,DataVector&& cols);
+        DataFrame(const DataFrame& other);
+
+        DataFrame(DataFrame&& other);
+
+        DataFrame& operator=(const DataFrame& other);
+
+        DataFrame& operator=(DataFrame&& other);
 
         auto getColNames(std::string_view str);
 
         void setColumnIndexMap(const std::string& str);
 
         bool isCSV(const fs::path& p);
-        auto read_csv(const fs::path& filePath);
 
+        static DataFrame<I,H> read_csv(const fs::path& filePath);
 
         template<typename ColType>
         void setColumn(const StringVector& strVector, size_t colInd);
@@ -39,7 +43,6 @@ namespace Kodiak {
         auto load_column(const StringVector& str);
 
         private:
-
         using Columns = std::vector<DataVector>;
         using ColDict = std::unordered_map<std::string,size_t>;
 
