@@ -10,6 +10,8 @@ namespace CSV {
 
     using StringVector = Kodiak::StringVector;
 
+    bool isCSV(const fs::path& p);
+
     template<typename ColType>
     bool isType(std::string_view str);
 

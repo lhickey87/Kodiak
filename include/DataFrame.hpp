@@ -12,11 +12,16 @@ namespace fs = std::filesystem;
 
 namespace Kodiak {
 
+    using ColumnEntry = std::pair<std::string_view, DataVector>;
     template <typename I, typename H>
     class DataFrame {
         public:
 
+        DataFrame() = default;
+
         explicit DataFrame(size_t size);
+
+        explicit DataFrame(std::initializer_list<ColumnEntry> columns);
 
         DataFrame(const DataFrame& other);
 
@@ -25,6 +30,11 @@ namespace Kodiak {
         DataFrame& operator=(const DataFrame& other);
 
         DataFrame& operator=(DataFrame&& other);
+
+        DataVector operator[](std::string_view columnName){
+            auto colInd = nameIndMap_[columnName];
+            return data_[colInd];
+        }
 
         auto getColNames(std::string_view str);
 

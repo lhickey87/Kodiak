@@ -4,6 +4,11 @@
 
 namespace CSV {
 
+    bool isCSV(const fs::path& p)
+    {
+        return fs::is_regular_file(p) && p.extension() == ".csv";
+    }
+
     template<typename ColType>
     bool isType(std::string_view str)
     {

@@ -11,7 +11,19 @@
             nameIndMap_.reserve(size);
         }
 
+    template<typename I, typename H>
+    DataFrame<I,H>::DataFrame(std::initializer_list<ColumnEntry> columns)
+        : numColumns_(columns.size())
+        {
+            data_.reserve(numColumns_);
+            nameIndMap_.reserve(numColumns_);
 
+            size_t index = 0;
+            for (auto&& [colName, column] : columns){
+                data_.emplace_back(std::move(column));
+                nameIndMap_.emplace(colName, index++);
+            }
+        }
 
     template<typename I, typename H>
     DataFrame<I,H>::DataFrame(const DataFrame& other)
@@ -52,12 +64,6 @@
             numColumns_ = std::move(other.numColumns_);
         }
         return *(this);
-    }
-
-    template<typename I, typename H>
-    bool DataFrame<I,H>::isCSV(const fs::path& p)
-    {
-        return fs::is_regular_file(p) && p.extension() == ".csv";
     }
 
     template<typename I, typename H>
@@ -116,6 +122,8 @@
     template<typename I, typename H>
     DataFrame<I,H> DataFrame<I,H>::read_csv(const fs::path& filePath)
     {
+        if (!CSV::isCSV(filePath)){ throw std::invalid_argument("File is Not a CSV File, cannot parse");}
+
         std::ifstream inputFile{filePath, std::ios::in};
         std::string str(static_cast<size_t>(fs::file_size(filePath)),0);
 
