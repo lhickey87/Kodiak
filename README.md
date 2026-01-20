@@ -1,19 +1,20 @@
 # Kodiak
 
-**Kodiak** is a high-performance, in-memory, columnar analytics engine.  
-It is designed for **vectorized execution**, **columnar memory layout**, and **fast aggregation and filtering operations**, making it ideal for benchmarking against Pandas, Polars, and other data processing libraries.
+**Kodiak** is a fast, in-memory analytics engine built for working with columnar data in Python.
 
-Kodiak provides the **core execution engine of an analytical database** without the complexity of SQL parsing, joins, or disk storage — a lightweight, educational engine for high-performance analytics.
+It focuses on vectorized execution and efficient aggregation and filtering, making it a great tool for learning about analytical databases and benchmarking performance against libraries like Pandas and Polars.
+
+Kodiak provides the core of an analytical database but without SQL, joins, or disk storage.
 
 ---
 
 ## Key Features
 
-- Columnar in-memory table storage  
-- Vectorized scan, filter, and aggregate operations  
-- Python API for programmatic table construction and queries  
-- Designed for performance benchmarking against Pandas / Polars  
-- Lightweight, minimal dependencies  
+- Columnar, in-memory data storage
+- Fast vectorized scans, filters, and aggregates
+- Simple Python API for building and querying tables
+- Designed for performance experiments and education
+- Minimal dependencies and easy to run
 
 ---
 
